@@ -3,4 +3,4 @@ Code repository created by Bruno Batinica for the Vascular Risk Equity in Aotear
 
 Full methodology is currently uploaded
 
-Finalised models will soon be released pending data governance group meeting
+Finalised models will soon be released 
