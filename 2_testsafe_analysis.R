@@ -68,7 +68,7 @@ by_id = an_tests %>%
 
 included_tests = by_id |>
   filter(RESULT_DATE > as.Date(paste("2008","-01-01",sep = ""),
-   RESULT_DATE < as.Date(paste("2013","-01-01",sep = "")) 
+   RESULT_DATE < as.Date(paste("2013","-01-01",sep = ""))))
 
 temp = included_tests |> 
   reframe(
