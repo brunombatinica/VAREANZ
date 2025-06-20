@@ -1,6 +1,4 @@
 # VAREANZ
-Code repository created by Bruno Batinica for the Vascular Risk Equity in Aotearoa New Zealand programme 
+Code repository for the Vascular Risk Equity in Aotearoa New Zealand program 
 
-Full methodology is currently uploaded
-
-Finalised models will soon be released 
+Finalized models will soon be released as a stand-alone web application
