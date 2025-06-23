@@ -5,11 +5,16 @@ rm(list = ls())
 dev.off()
 
 #set working directory
-setwd("//uoa.auckland.ac.nz/Shared/MED/EPBI/ViewData/Users/bbat644/Desktop/code")
+setwd("C:/Users/bruno/OneDrive/Documents/Code/projects/VAREANZ/Honours")
 
 #source helper functions (also loads in libraries)
 source("0_helper_functions.R")
 
+#output directory
+output_dir = "outputs/cc_analysis/"
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir,recursive = TRUE) 
+}
 
 #1. import data and cleaning up data ####
 an_cohort_ts = read.fst("data/cohorts/an_cohort_ts.fst",
@@ -171,7 +176,7 @@ demo_table = demo_table_generator(subset_list,
                                   test_rows = TRUE)
 demo_table
 write.csv(demo_table,
-          file = "tables/demo_table_cc_gender.csv")
+          file = paste0(output_dir,"tables/demo_table_cc_gender.csv"))
 
 
 # 6. create prediction dts ####
@@ -208,7 +213,7 @@ coef_plot = coef_plot_generator(model_list_list,
 coef_plot
 ggsave("coef_plot_cc.png",
        coef_plot,
-       path = "plots/misc",
+       path = paste0(output_dir,"plots/misc"),
        height = 7,
        width = 9)
 
@@ -218,7 +223,7 @@ ggsave("coef_plot_cc.png",
 hr_table = coef_table_generator(model_list_list)
 hr_table
 write.csv(hr_table,
-          "tables/hr_table_cc.csv")
+          paste0(output_dir,"tables/hr_table_cc.csv"))
 
 #7c Coefficient and P value table
 pred = names(summary(models[[1]])$coefficients)

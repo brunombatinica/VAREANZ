@@ -116,6 +116,37 @@ dt_imputed_long <- melt(dt_imputed, measure.vars = names(dt_imputed), variable.n
 dt_imputed_long[,imputed_position := imputed_position]
 dt_imputed_long[imputed_position == FALSE, Imputed := NA]
 dt_imputed_long
+
+x_titles = c(
+  egfr="mL/min/1.73m^2",
+  hba1c="mmol/L",
+  tchdl="mmol/L",
+  tri="mmol/L"
+)
+n_present <- dt_long %>% 
+  drop_na(Original) %>%            # keep only rows that were observed
+  group_by(Variable) %>% 
+  summarise(n_present = n(), .groups = "drop")
+n_present
+n_imputed <- dt_imputed_long %>% 
+  drop_na(Imputed) %>% 
+  group_by(Variable) %>% 
+  summarise(n_imputed = n(), .groups = "drop")
+n_imputed
+n_tbl <- full_join(n_present, n_imputed, by = "Variable") %>% 
+  replace_na(list(n_present = 0, n_imputed = 0))   # just in case
+n_tbl
+facet_labs <- n_tbl %>% 
+  mutate(label = paste0(
+           x_titles[Variable],                       # 1st line
+           "\nnumber present: (",  n_present, ")", # 2nd line, part 1
+           "\nnumber imputed: (", n_imputed, ")"       # 2nd line, part 2
+         )) %>% 
+  select(Variable, label) %>%
+  tibble::deframe() 
+facet_labs
+
+x_titles
 imputation_plot = ggplot() +
   geom_histogram(data = dt_long, 
                  aes(x = Original, fill = "Original"), 
@@ -125,14 +156,18 @@ imputation_plot = ggplot() +
                  aes(x = Imputed, fill = "Imputed"), 
                  binwidth = 1, 
                  alpha = 0.5) +
-  facet_wrap(~Variable, scales = "free") +
-  labs(title = "Comparison of Original and Imputed Values",
-       x = "Value",
+  facet_wrap(~Variable, 
+            scales = "free",
+            labeller = labeller(Variable = facet_labs),
+            strip.position = "bottom") +
+  labs(x = NULL,
        y = "Frequency",
        fill = "Data Type") +  # Legend title
   scale_fill_manual(values = c("Original" = "blue", "Imputed" = "red")) +
-  theme_minimal()+
-  theme(legend.position = "bottom")
+  theme_minimal(base_size = 18)+
+  theme(legend.position = "bottom",
+        strip.placement = "outside"
+        )
 imputation_plot
 ggsave("imputation_sanity_check.png",
        imputation_plot,
@@ -292,7 +327,7 @@ ggsave("coef_plot.jpg",
 hr_table = coef_table_generator(model_list_list)
 hr_table
 write.csv(hr_table,
-          paste0(output_dir,"tables/hr_table_cc.csv"))
+          paste0(output_dir,"tables/hr_table_imputed_rf.csv"))
 
 #7c Coefficient and P value table
 pred = names(summary(models[[1]])$coefficients)
@@ -602,3 +637,70 @@ mean(temp$any_med)
 
 # 
 mean(cohort[cohort$gender_code == 1,]$tri, na.rm = TRUE)
+
+
+######################################################################
+# proportion captures
+####################################################################
+library(data.table)
+library(ggplot2)
+library(scales)
+library(ggpubr)     # ggarrange()
+
+#–––––––––––––––––––––#
+# Helper to summarise #
+#–––––––––––––––––––––#
+make_summary <- function(dt, risk_col = "New Model",
+                         thr_seq = seq(0, 10, by = 0.1)) {
+  n_tot   <- nrow(dt)
+  n_ev    <- dt[indicator == 1, .N]
+
+  rbindlist(lapply(thr_seq, function(th) {
+    data.table(
+      threshold  = th,
+      metric     = c("Screen positive", "Events captured"),
+      proportion = c(dt[get(risk_col) > th, .N] / n_tot,
+                     if (n_ev > 0)
+                       dt[get(risk_col) > th & indicator == 1, .N] / n_ev
+                     else NA_real_)
+    )
+  }))
+}
+
+#––––––––––––––––#
+# Build figures  #
+#––––––––––––––––#
+plot_threshold_curve <- function(summary_dt, panel_title) {
+  ggplot(summary_dt,
+         aes(threshold, proportion, colour = metric)) +
+    geom_line(linewidth = 1) +
+    scale_y_continuous(labels = percent_format(accuracy = 1)) +
+    labs(title = panel_title,
+         x = "Risk threshold",
+         y = "Proportion",
+         colour = NULL) +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "bottom")
+}
+
+# generate summaries
+sum_women <- make_summary(pred_dt_list[["women"]])
+sum_men   <- make_summary(pred_dt_list[["men"]])
+
+# create separate plots
+p_women <- plot_threshold_curve(sum_women, "Women")
+p_men   <- plot_threshold_curve(sum_men,   "Men")
+
+#–––––––––––––––––––––––––#
+# Arrange side-by-side    #
+#–––––––––––––––––––––––––#
+ggarrange(
+  p_men, p_women,
+  # labels        = c("Men", "Women"),   # panel tags
+  ncol          = 2,
+  common.legend = TRUE,
+  legend        = "bottom"
+)
+
+
+
